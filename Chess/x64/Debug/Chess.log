@@ -1,0 +1,5 @@
+﻿  Main.cpp
+  class template optional is only available with C++17 or later.
+C:\Users\Jesse\source\repos\Chess\Chess\Main.cpp(48,37): warning C4244:  'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\Jesse\source\repos\Chess\Chess\Main.cpp(48,30): warning C4244:  'argument': conversion from 'float' to 'int', possible loss of data
+  Chess.vcxproj -> C:\Users\Jesse\source\repos\Chess\x64\Debug\Chess.exe
