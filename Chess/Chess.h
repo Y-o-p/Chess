@@ -5,6 +5,8 @@
 #include <iostream>
 #include <cmath>
 #include <array>
+#include <vector>
+#include <optional>
 using namespace std;
 
 enum TYPE
@@ -67,6 +69,10 @@ typedef array<array<Piece, 8>, 8> Board;
 struct Square
 {
 	int file = 0, rank = 0;
+	bool operator ==(const Square& s)
+	{
+		return (file == s.file && rank == s.rank);
+	}
 };
 
 class ChessGame
@@ -77,15 +83,22 @@ public:
 
 	INPUT_RETURN processInput(const Square& s);
 	const Board& getBoard();
+	void getPieceSelected(Piece& piece, Square& s);
+	const vector<Square>& getValidMoveSquares() const;
 	bool isWhiteInCheck() const;
 	bool isBlackInCheck() const;
+	bool isSquareOnBoard(const Square& s) const;
 
 private:
 	void setUpBoard(string code);
-	bool movePiece(const Square& a, const Square& b);
+	bool canMovePiece(const Square& a, const Square& b);
+	bool movePiece(Board& board, const Square& a, const Square& b, bool checkIfMovePossible = true);
 	bool isValidMove(const Board& board, const Square& a, const Square& b) const;
-	void isInCheck(const Board& board);
+	void calculateValidMoveSquares(const Square& s);
+	bool hypCheck(const Square& a, const Square& b);
+	void isInCheck(const Board& board, bool& whiteInCheck, bool& blackInCheck);
 	Square m_squareSelected = Square();
+	vector<Square> m_validMoveSquares;
 	Board m_board = { {Piece()} };
 	STATE m_state = SELECT;
 	bool m_whitesTurn = true;

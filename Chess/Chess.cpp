@@ -19,13 +19,18 @@ INPUT_RETURN ChessGame::processInput(const Square& s)
 		if (p.white == m_whitesTurn && p.type != EMPTY)
 		{
 			m_squareSelected = s;
+			calculateValidMoveSquares(m_squareSelected);
 			m_state = MOVE;
 		}
 		break;
 	case MOVE:
-		if (movePiece(m_squareSelected, s))
+		auto it = find(m_validMoveSquares.begin(), m_validMoveSquares.end(), s);
+		if (it != m_validMoveSquares.end())
 		{
-			m_whitesTurn = !m_whitesTurn;
+			if (movePiece(m_board, m_squareSelected, s))
+			{
+				m_whitesTurn = !m_whitesTurn;
+			}
 		}
 		m_state = SELECT;
 		break;
@@ -40,6 +45,17 @@ const Board& ChessGame::getBoard()
 	return m_board;
 }
 
+void ChessGame::getPieceSelected(Piece& piece, Square& s)
+{
+	piece = m_board[s.rank][s.file];
+	s = m_squareSelected;
+}
+
+const vector<Square>& ChessGame::getValidMoveSquares() const
+{
+	return m_validMoveSquares;
+}
+
 bool ChessGame::isWhiteInCheck() const
 {
 	return m_whiteInCheck;
@@ -48,6 +64,11 @@ bool ChessGame::isWhiteInCheck() const
 bool ChessGame::isBlackInCheck() const
 {
 	return m_blackInCheck;
+}
+
+bool ChessGame::isSquareOnBoard(const Square& s) const
+{
+	return (s.file < 8 && s.file >= 0 && s.rank < 8 && s.rank >= 0);
 }
 
 void ChessGame::setUpBoard(string setUpCode)
@@ -89,27 +110,32 @@ void ChessGame::setUpBoard(string setUpCode)
 	} 
 }
 
-bool ChessGame::movePiece(const Square& a, const Square& b)
+/*bool ChessGame::canMovePiece(const Square& a, const Square& b)
 {
 	// Can this piece move as suggested?
 	if (!isValidMove(m_board, a, b))
 		return false;
-	Board boardCopy = m_board;
-	Piece* pieceA = &boardCopy[a.rank][a.file];
-	Piece* pieceB = &boardCopy[b.rank][b.file];
-	*pieceB = *pieceA;
-	pieceB->moved = true;
-	*pieceA = Piece();
-	isInCheck(boardCopy);
+	
 	cout << "White in check: " << m_whiteInCheck << ", " << "Black in check: " << m_blackInCheck << endl;
 	// Is the player moving into check?
-	if ((pieceB->white && m_whiteInCheck) || (!pieceB->white && m_blackInCheck))
+	if ((pieceB.white && m_whiteInCheck) || (!pieceB.white && m_blackInCheck))
 		return false;
-	pieceA = &m_board[a.rank][a.file];
-	pieceB = &m_board[b.rank][b.file];
-	*pieceB = *pieceA;
-	pieceB->moved = true;
-	*pieceA = Piece();
+	
+	return true;
+}*/
+
+bool ChessGame::movePiece(Board& board, const Square& a, const Square& b, bool checkIfMovePossible)
+{
+	//if (checkIfMovePossible)
+	//	if (!canMovePiece(a, b))
+	//		return false;
+	Piece& pieceA = board[a.rank][a.file];
+	Piece& pieceB = board[b.rank][b.file];
+	pieceA = board[a.rank][a.file];
+	pieceB = board[b.rank][b.file];
+	pieceB = pieceA;
+	pieceB.moved = true;
+	pieceA = Piece();
 	return true;
 	// Is the player trying to castle?
 }
@@ -220,7 +246,211 @@ bool ChessGame::isValidMove(const Board& board, const Square& a, const Square& b
 	return false;
 }
 
-void ChessGame::isInCheck(const Board& board)
+void ChessGame::calculateValidMoveSquares(const Square& s)
+{
+	m_validMoveSquares.clear();
+	auto& board = m_board;
+	const Piece& p = board[s.rank][s.file];
+
+	auto checkCollision = [=](const Square& sToCheck) -> optional<Piece>
+	{
+		// Check if collision with piece
+		Piece piece = board[sToCheck.rank][sToCheck.file];
+		if (piece.type != EMPTY)
+		{
+			return make_optional(piece);
+		}
+	};
+	// Checks for collision and adds it to list and returns false if can't continue because either
+	// out of bounds or ran into a piece
+	auto checkAndAddValidSquare = [=](const Square& sToCheck) -> bool
+	{
+		if (isSquareOnBoard(sToCheck))
+		{
+			auto collision = checkCollision(sToCheck);
+			if (collision.has_value())
+			{
+				if (collision->white != p.white)
+				{
+					// Enemy piece >:(
+					// Add capturable piece
+					if (!hypCheck(s, sToCheck))
+						m_validMoveSquares.push_back(sToCheck);
+				}
+				// Can no longer check along this line
+				return false;
+			}
+			// Add unoccupied square
+			if (!hypCheck(s, sToCheck))
+			{
+				m_validMoveSquares.push_back(sToCheck);
+			}
+			return true;
+		}
+		return false;
+	};
+	auto calculateLine = [=](bool horizontal, bool diagonal)
+	{
+		int dir = 0, dirEnd = 0;
+		if (diagonal)
+		{
+			dir = 0;
+			dirEnd = 4;
+		}
+		else if (horizontal)
+		{
+			dir = 4;
+			dirEnd = 8;
+		}
+		if (diagonal && horizontal)
+		{
+			dir = 0;
+			dirEnd = 8;
+		}
+		for (; dir < dirEnd; dir++)
+		{
+			int horizontalDir, verticalDir;
+			switch (dir)
+			{
+			// Top left
+			case 0:
+				horizontalDir = -1;
+				verticalDir = -1;
+				break;
+			// Top right
+			case 1:
+				horizontalDir = 1;
+				verticalDir = -1;
+				break;
+			// Bottom right
+			case 2:
+				horizontalDir = 1;
+				verticalDir = 1;
+				break;
+			// Bottom left
+			case 3:
+				horizontalDir = -1;
+				verticalDir = 1;
+				break;
+			// Left
+			case 4:
+				horizontalDir = -1;
+				verticalDir = 0;
+				break;
+			// Top
+			case 5:
+				horizontalDir = 0;
+				verticalDir = -1;
+				break;
+			// Right
+			case 6:
+				horizontalDir = 1;
+				verticalDir = 0;
+				break;
+			// Bottom
+			case 7:
+				horizontalDir = 0;
+				verticalDir = -1;
+				break;
+
+			}
+
+			Square scan = s;
+			int i = 1;
+			bool scanning = true;
+			while (scanning)
+			{
+				scan.file += i * horizontalDir;
+				scan.rank += i * verticalDir;
+
+				i++;
+
+				scanning = checkAndAddValidSquare(scan);
+			}
+		}
+	};
+
+	switch (p.type)
+	{
+	case KING:
+		{
+			array<int, 3> dirs = { -1, 0, 1 };
+			for (int y : dirs)
+			{
+				for (int x : dirs)
+				{
+					// All possible combinations of direction to get surrounding squares
+					Square scan = { s.file + x, s.rank + y };
+					checkAndAddValidSquare(scan);
+				}
+			}
+		}
+		break;
+	case KNIGHT:
+		{
+			array<int, 3> dirsA = { -2, 2 };
+			array<int, 3> dirsB = { -1, 1 };
+			for (int y : dirsA)
+			{
+				for (int x : dirsB)
+				{
+					Square scan = { s.file + x, s.rank + y };
+					checkAndAddValidSquare(scan);
+					scan = { s.file + y, s.rank + x };
+					checkAndAddValidSquare(scan);
+				}
+			}
+		}
+		break;
+	case BISHOP:
+		calculateLine(false, true);
+		break;
+	case QUEEN:
+		calculateLine(true, true);
+		break;
+	case PAWN:
+		{
+			int verticalDir = p.white ? -1 : 1;
+			Square scan = { s.file, s.rank + 1 * verticalDir };
+			checkAndAddValidSquare(scan);
+			if (!p.moved)
+			{
+				// Can move two spaces
+				Square scan = { s.file, s.rank + 2 * verticalDir };
+				checkAndAddValidSquare(scan);
+			}
+		}
+		break;
+	case ROOK:
+		calculateLine(true, false);
+		break;
+	}
+}
+
+// Simulate if there is check based on the move (doesn't actually perform the move)
+bool ChessGame::hypCheck(const Square& a, const Square& b)
+{
+	Board boardCopy = m_board;
+	movePiece(boardCopy, a, b, false);
+	bool whiteInCheck, blackInCheck;
+	isInCheck(boardCopy, whiteInCheck, blackInCheck);
+	if (boardCopy[b.rank][b.file].white)
+	{
+		if (whiteInCheck)
+			return true;
+		else
+			return false;
+	}
+	else
+	{
+		if (blackInCheck)
+			return true;
+		else
+			return false;
+	}
+}
+
+void ChessGame::isInCheck(const Board& board, bool& whiteInCheck, bool& blackInCheck)
 {
 	// Find the king
 	Square whiteKingPos, blackKingPos;
@@ -238,8 +468,8 @@ void ChessGame::isInCheck(const Board& board)
 		}
 	}
 	
-	m_whiteInCheck = false;
-	m_blackInCheck = false;
+	whiteInCheck = false;
+	blackInCheck = false;
 	// Check if they're in check
 	for (int y = 0; y < 8; y++)
 	{
@@ -250,12 +480,12 @@ void ChessGame::isInCheck(const Board& board)
 				if (board[y][x].white)
 				{
 					if (isValidMove(board, { x, y }, blackKingPos))
-						m_blackInCheck = true;
+						blackInCheck = true;
 				}
 				else
 				{
 					if (isValidMove(board, { x, y }, whiteKingPos))
-						m_whiteInCheck = true;
+						whiteInCheck = true;
 				}
 			}
 		}
