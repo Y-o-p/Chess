@@ -42,6 +42,16 @@
 
 using namespace std;
 
+template <class T>
+int sign(const T& x)
+{
+	if (x < 0)
+	{
+		return -1;
+	}
+	return 1;
+}
+
 enum STATE
 {
 	SELECT,

@@ -121,11 +121,24 @@ void ChessGame::movePiece(Board& board, const Square& a, const Square& b)
 {
 	Piece& pieceA = board[a.rank][a.file];
 	Piece& pieceB = board[b.rank][b.file];
-	pieceA = board[a.rank][a.file];
-	pieceB = board[b.rank][b.file];
 	pieceB = pieceA;
 	pieceB.moved = true;
 	pieceA = Piece();
+
+	// Is it a castle?
+	if (pieceB.type == KING && abs(b.file - a.file) == 2)
+	{
+		int rank = pieceB.white ? 7 : 0;
+		// Queen side or king side castle?
+		if (b.file == 6)
+		{
+			movePiece(board, { 7, rank }, { 5, rank });
+		}
+		else if (b.file == 2)
+		{
+			movePiece(board, { 0, rank }, { 3, rank });
+		}
+	}
 }
 
 void ChessGame::calculateValidMoveSquares(const Square& s)
@@ -212,6 +225,39 @@ void ChessGame::calculateValidMoveSquares(const Square& s)
 					checkAndAddValidSquare(scan);
 				}
 			}
+
+			// Castling
+			if (p.moved)
+				break;
+			vector<int> castleOffsets;
+			// Check if rooks have moved
+			int rank = p.white ? 7 : 0;
+			if (m_board[rank][0].type == ROOK && 
+				m_board[rank][0].white == p.white &&
+				m_board[rank][0].moved == false)
+				castleOffsets.push_back(-2);
+			if (m_board[rank][7].type == ROOK &&
+				m_board[rank][7].white == p.white &&
+				m_board[rank][7].moved == false)
+				castleOffsets.push_back(2);
+
+			for (auto offset : castleOffsets)
+			{
+				Square midSquare = s + Square(sign(offset), 0);
+				Square offSquare = s + Square(offset, 0);
+				// Check for collisions
+				if (checkCollision(midSquare).has_value()
+					|| checkCollision(offSquare).has_value())
+					continue;
+				// Check if castling while in check
+				if ((p.white && m_whiteInCheck) || (!p.white && m_blackInCheck))
+					continue;
+				// Check if castling through check
+				if (hypCheck(s, midSquare) || hypCheck(s, offSquare))
+					continue;
+				// Is able to castle
+				m_validMoveSquares.push_back(offSquare);
+			}
 		}
 		break;
 	case KNIGHT:
@@ -266,16 +312,6 @@ bool ChessGame::hypCheck(const Square& a, const Square& b)
 		return whiteInCheck;
 	else
 		return blackInCheck;
-}
-
-template <class T>
-int sign(const T& x)
-{
-	if (x < 0)
-	{
-		return -1;
-	}
-	return 1;
 }
 
 bool ChessGame::isValidMove(const Board& board, const Square& a, const Square& b) const

@@ -5,9 +5,25 @@
 struct Square
 {
 	int file = 0, rank = 0;
+	
+	Square() {}
+	Square(const int& file, const int& rank)
+	{
+		this->file = file;
+		this->rank = rank;
+	}
+	Square(const Square& copy) 
+	{
+		file = copy.file;
+		rank = copy.rank;
+	}
 	bool operator ==(const Square& s)
 	{
 		return (file == s.file && rank == s.rank);
+	}
+	Square operator +(const Square& s) const
+	{
+		return { file + s.file, rank + s.rank };
 	}
 };
 
