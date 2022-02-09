@@ -1,3 +1,33 @@
+/*
+	Author: Jesse Rheal
+	
+	-Input-
+	* Square (file and rank) the player has selected
+
+	-Output-
+	* Board data such as piece type and color
+	* Input return such as if there's a bad move
+	* List of moves
+	* Pieces taken
+	* Checkmate
+
+	-How this class works-
+	* Does not rely on inhertiance
+	* Data types are stored as structs
+	* Chess board is an abstract version of how a chess game works
+	* The inner workings of how the chess game plays is hidden
+	
+	-How moving a piece works-
+	* Input takes in a length two vector
+	* If a piece is selected then the possible moves the piece can make are stored
+		1. Tests if the square is inside the board
+		2. Checks if the piece can make that move normally
+		3. Checks if there's a piece blocking it
+		4. Checks if the move puts either king in check
+		5. If it gets through all stages then the square is added to a list of possible moves
+	* The next input will either move the piece or select a different piece
+*/
+
 #pragma once
 
 #include <string>
@@ -7,29 +37,13 @@
 #include <array>
 #include <vector>
 #include <optional>
-using namespace std;
 
-enum TYPE
-{
-	KING,
-	QUEEN,
-	BISHOP,
-	KNIGHT,
-	ROOK,
-	PAWN,
-	EMPTY
-};
+#include "Piece.h"
+
+using namespace std;
 
 enum STATE
 {
-	/*WHITE_SELECT,
-	WHITE_ATTACK,
-	WHITE_CHECK,
-	WHITE_CHECKMATE,
-	BLACK_SELECT,
-	BLACK_ATTACK,
-	BLACK_CHECK,
-	BLACK_CHECKMATE*/
 	SELECT,
 	MOVE
 };
@@ -38,42 +52,11 @@ enum class INPUT_RETURN
 {
 	OKAY,
 	IN_CHECK,
+	CHECKMATE,
 	INVALID_MOVE
 };
 
-struct Piece
-{
-	TYPE type = EMPTY;
-	bool white = true;
-	bool moved = false;
-
-	Piece() {}
-
-	Piece(const TYPE& type, bool white, bool moved)
-	{
-		this->type = type;
-		this->white = white;
-		this->moved = moved;
-	}
-
-	Piece(const Piece& copy)
-	{
-		type = copy.type;
-		white = copy.white;
-		moved = copy.moved;
-	}
-};
-
 typedef array<array<Piece, 8>, 8> Board;
-
-struct Square
-{
-	int file = 0, rank = 0;
-	bool operator ==(const Square& s)
-	{
-		return (file == s.file && rank == s.rank);
-	}
-};
 
 class ChessGame
 {
@@ -91,12 +74,12 @@ public:
 
 private:
 	void setUpBoard(string code);
-	bool canMovePiece(const Square& a, const Square& b);
-	bool movePiece(Board& board, const Square& a, const Square& b, bool checkIfMovePossible = true);
-	bool isValidMove(const Board& board, const Square& a, const Square& b) const;
+	void movePiece(Board& board, const Square& a, const Square& b);
 	void calculateValidMoveSquares(const Square& s);
 	bool hypCheck(const Square& a, const Square& b);
+	bool isValidMove(const Board& board, const Square& a, const Square& b) const;
 	void isInCheck(const Board& board, bool& whiteInCheck, bool& blackInCheck);
+	
 	Square m_squareSelected = Square();
 	vector<Square> m_validMoveSquares;
 	Board m_board = { {Piece()} };

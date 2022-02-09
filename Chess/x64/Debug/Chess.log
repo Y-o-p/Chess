@@ -1,3 +1,6 @@
 ﻿  Chess.cpp
-C:\Users\Jesse\source\repos\Chess\Chess\Chess.cpp(263): warning C4715:  '<lambda_f58a282b367c05707942debb142e785d>::operator()': not all control paths return a value
+  Main.cpp
+C:\Users\Jesse\source\repos\Chess\Chess\Main.cpp(21,37): warning C4244:  'argument': conversion from 'float' to 'int', possible loss of data
+  Generating Code...
+C:\Users\Jesse\source\repos\Chess\Chess\Main.cpp(21,30): warning C4244:  'argument': conversion from 'float' to 'int', possible loss of data
   Chess.vcxproj -> C:\Users\Jesse\source\repos\Chess\x64\Debug\Chess.exe

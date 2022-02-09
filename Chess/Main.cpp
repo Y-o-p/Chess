@@ -27,6 +27,8 @@ int main(int argc, char* argv[])
 	}
 
 	SDL_Texture* chessSpriteSheet = IMG_LoadTexture(renderer, "pieces_1.png");
+	SDL_Texture* moveable = IMG_LoadTexture(renderer, "moveable.png");
+	vector<Square> possibleMoves;
 	ChessGame game;
 	auto board = game.getBoard();
 
@@ -65,6 +67,7 @@ int main(int argc, char* argv[])
 				game.processInput({ x, y });
 
 			board = game.getBoard();
+			possibleMoves = game.getValidMoveSquares();
 		}
 
 		SDL_SetRenderDrawColor(renderer, 140, 225, 159, 255);
@@ -91,8 +94,15 @@ int main(int argc, char* argv[])
 					SDL_Rect srcRect = { board[y][x].type * 256, board[y][x].white ? 0 : 256, 256, 256 };
 					SDL_RenderCopy(renderer, chessSpriteSheet, &srcRect, &square);
 				}
-
 			}
+		}
+
+		// Show possible moves with the selected piece
+		for (auto possibleMove : possibleMoves)
+		{
+			SDL_Rect srcRect = { 0, 0, 128, 128 };
+			SDL_Rect destRect = { possibleMove.file * CHESS_PIECE_SIZE + CHESS_PIECE_SIZE / 4, possibleMove.rank * CHESS_PIECE_SIZE + CHESS_PIECE_SIZE / 4, CHESS_PIECE_SIZE / 2, CHESS_PIECE_SIZE / 2};
+			SDL_RenderCopy(renderer, moveable, &srcRect, &destRect);
 		}
 
 		SDL_RenderPresent(renderer);
