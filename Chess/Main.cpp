@@ -6,14 +6,19 @@
 #include <SDL_main.h>
 #include <SDL.h>
 #include <SDL_image.h>
+#include <SDL_ttf.h>
 
 #include "Chess.h"
 
 using namespace std;
 
+//void renderTexture(SDL_Texture* texture, int)
+
 int main(int argc, char* argv[])
 {
-	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) == -1) return -1;
+	if (TTF_Init() == -1) return -1;
+	
 	SDL_Window* window;
 	SDL_Renderer* renderer;
 	const int CHESS_PIECE_SIZE = 128;
@@ -26,6 +31,8 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
+	TTF_Font* font = TTF_OpenFont("times new roman.ttf", 24);
+	auto title = TTF_RenderText_Solid(font, "Chess", { 255, 255, 255, 255 });
 	SDL_Texture* chessSpriteSheet = IMG_LoadTexture(renderer, "pieces_1.png");
 	SDL_Texture* moveable = IMG_LoadTexture(renderer, "moveable.png");
 	vector<Square> possibleMoves;
@@ -105,9 +112,18 @@ int main(int argc, char* argv[])
 			SDL_RenderCopy(renderer, moveable, &srcRect, &destRect);
 		}
 
+		// Sidebar
+		SDL_Texture* titleTexture = SDL_CreateTextureFromSurface(renderer, title);
+
+		SDL_Rect srcRect = { 0, 0, 128, 128};
+		SDL_Rect destRect = { CHESS_PIECE_SIZE * 8, 0, 128, 64 };
+		SDL_RenderCopy(renderer, titleTexture, NULL, &destRect);
+
 		SDL_RenderPresent(renderer);
 	}
 
+	TTF_CloseFont(font);
+	TTF_Quit();
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 	return 0;

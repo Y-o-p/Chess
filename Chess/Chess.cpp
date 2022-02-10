@@ -152,6 +152,16 @@ void ChessGame::movePiece(Board& board, const Square& a, const Square& b)
 			movePiece(board, { 0, rank }, { 3, rank });
 		}
 	}
+
+	// Is it en passant?
+	if (pieceB.type == PAWN &&
+		abs(b.file - a.file) == 1 &&
+		abs(b.rank - a.rank) == 1 &&
+		BCopy.type == EMPTY)
+	{
+		int verticalDir = pieceB.white ? -1 : 1;
+		board[b.rank - verticalDir][b.file] = Piece();
+	}
 }
 
 void ChessGame::calculateValidMoveSquares(const Square& s)
@@ -299,13 +309,42 @@ void ChessGame::calculateValidMoveSquares(const Square& s)
 		{
 			int verticalDir = p.white ? -1 : 1;
 			Square scan = { s.file, s.rank + 1 * verticalDir };
-			checkAndAddValidSquare(scan);
+			if (!checkCollision(scan).has_value())
+				m_validMoveSquares.push_back(scan);
 			if (!p.moved)
 			{
 				// Can move two spaces
-				Square scan = { s.file, s.rank + 2 * verticalDir };
-				checkAndAddValidSquare(scan);
+				scan = { s.file, s.rank + 2 * verticalDir };
+				if (!checkCollision(scan).has_value())
+					m_validMoveSquares.push_back(scan);
 			}
+			// Attack
+			for (auto i : { -1, 1 })
+			{
+				scan = { s.file + i, s.rank + 1 * verticalDir };
+				if (!isSquareOnBoard(scan))
+					continue;
+				auto collision = checkCollision(scan);
+				if (collision.has_value() && collision->white != p.white)
+					m_validMoveSquares.push_back(scan);
+				
+				// En passant
+				Square start = { s.file + i, s.rank + 2 * verticalDir };
+				if (!isSquareOnBoard(start))
+					continue;
+				Square end = { s.file + i, s.rank };
+				Piece scanPiece = m_board[end.rank][end.file];
+				if (m_moves.empty())
+					break;
+				if (m_moves.back() == (start.asNotation() + end.asNotation()))
+				{
+					if ((p.white != scanPiece.white) && scanPiece.type == PAWN)
+					{
+						m_validMoveSquares.push_back(scan);
+					}
+				}
+			}
+
 		}
 		break;
 	case ROOK:
@@ -336,7 +375,7 @@ bool ChessGame::isValidMove(const Board& board, const Square& a, const Square& b
 	int absHDist = abs(hDist), absVDist = abs(vDist);
 	int dir = pieceA.white ? -1 : 1;
 	// Can it occupy the square?
-	if (!(pieceA.white == !pieceB.white || pieceB.type == EMPTY))
+	if (pieceB.type != EMPTY && pieceA.white == pieceB.white)
 		return false;
 
 	auto bishopLine = [&board, &absHDist, &a, &hDist, &vDist]()
@@ -378,17 +417,21 @@ bool ChessGame::isValidMove(const Board& board, const Square& a, const Square& b
 		}
 		break;
 	case QUEEN:
-		if (absHDist / (absVDist == 0 ? 1 : absVDist) == 1)
-		{
+		if (absVDist == 0)
+			return false;
+		if (absHDist / absVDist == 1 && absHDist % absVDist == 0)
 			return bishopLine();
-		}
 		if ((absHDist > 0 && absVDist == 0) || (absVDist > 0 && absHDist == 0))
-		{
 			return rookLine();
-		}
 		break;
 	case BISHOP:
-		if (absHDist / (absVDist == 0 ? 1 : absVDist) == 1)
+		if (b.file == 5 && b.rank == 2)
+		{
+			int i = 5+5;
+		}
+		if (absVDist == 0)
+			return false;
+		if (absHDist / absVDist == 1 && absHDist % absVDist == 0)
 			return bishopLine();
 		break;
 	case KNIGHT:
