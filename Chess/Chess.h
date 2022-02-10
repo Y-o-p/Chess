@@ -78,6 +78,7 @@ public:
 	const Board& getBoard();
 	void getPieceSelected(Piece& piece, Square& s);
 	const vector<Square>& getValidMoveSquares() const;
+	const vector<string>& getMoves() const;
 	bool isWhiteInCheck() const;
 	bool isBlackInCheck() const;
 	bool isSquareOnBoard(const Square& s) const;
@@ -89,12 +90,14 @@ private:
 	bool hypCheck(const Square& a, const Square& b);
 	bool isValidMove(const Board& board, const Square& a, const Square& b) const;
 	void isInCheck(const Board& board, bool& whiteInCheck, bool& blackInCheck);
-	
+	void recordMove(const Square& a, const Square& b, const TYPE& pieceA, bool takes = false, bool check = false, bool checkmate = false);
+
+	vector<string> m_moves;
 	Square m_squareSelected = Square();
 	vector<Square> m_validMoveSquares;
 	Board m_board = { {Piece()} };
 	STATE m_state = SELECT;
 	bool m_whitesTurn = true;
 	bool m_whiteCanCastle = true, m_blackCanCastle = true;
-	bool m_whiteInCheck = false, m_blackInCheck = false;
+	bool m_inCheck[2] = { false, false };
 };

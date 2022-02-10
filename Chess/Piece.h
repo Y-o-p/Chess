@@ -1,6 +1,9 @@
 #pragma once
 
 #include <list>
+#include <string>
+
+using namespace std;
 
 struct Square
 {
@@ -24,6 +27,11 @@ struct Square
 	Square operator +(const Square& s) const
 	{
 		return { file + s.file, rank + s.rank };
+	}
+
+	string asNotation() const
+	{
+		return string(1, static_cast<char>(file + 'a')) + to_string(8 - rank);
 	}
 };
 

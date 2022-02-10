@@ -11,7 +11,8 @@ ChessGame::~ChessGame()
 
 INPUT_RETURN ChessGame::processInput(const Square& s)
 {
-	Piece& p = m_board[s.rank][s.file];
+	Piece p = m_board[s.rank][s.file];
+	Piece selected = m_board[m_squareSelected.rank][m_squareSelected.file];
 
 	switch (m_state)
 	{
@@ -27,7 +28,17 @@ INPUT_RETURN ChessGame::processInput(const Square& s)
 		auto it = find(m_validMoveSquares.begin(), m_validMoveSquares.end(), s);
 		if (it != m_validMoveSquares.end())
 		{
+			bool inCheckBefore = m_inCheck[!selected.white];
+			bool takes = (m_board[s.rank][s.file].type != EMPTY);
+			// Move the piece
 			movePiece(m_board, m_squareSelected, s);
+			isInCheck(m_board, m_inCheck[1], m_inCheck[0]);
+
+			// Record the move
+			bool check = !inCheckBefore && m_inCheck[!selected.white];
+			recordMove(m_squareSelected, s, selected.type, takes, check, false);
+			
+			// Change states	
 			m_validMoveSquares.clear();
 			m_whitesTurn = !m_whitesTurn;
 			m_state = SELECT;
@@ -65,12 +76,12 @@ const vector<Square>& ChessGame::getValidMoveSquares() const
 
 bool ChessGame::isWhiteInCheck() const
 {
-	return m_whiteInCheck;
+	return m_inCheck[1];
 }
 
 bool ChessGame::isBlackInCheck() const
 {
-	return m_blackInCheck;
+	return m_inCheck[0];
 }
 
 bool ChessGame::isSquareOnBoard(const Square& s) const
@@ -121,6 +132,8 @@ void ChessGame::movePiece(Board& board, const Square& a, const Square& b)
 {
 	Piece& pieceA = board[a.rank][a.file];
 	Piece& pieceB = board[b.rank][b.file];
+	Piece ACopy = pieceA;
+	Piece BCopy = pieceB;
 	pieceB = pieceA;
 	pieceB.moved = true;
 	pieceA = Piece();
@@ -250,7 +263,7 @@ void ChessGame::calculateValidMoveSquares(const Square& s)
 					|| checkCollision(offSquare).has_value())
 					continue;
 				// Check if castling while in check
-				if ((p.white && m_whiteInCheck) || (!p.white && m_blackInCheck))
+				if (m_inCheck[p.white])
 					continue;
 				// Check if castling through check
 				if (hypCheck(s, midSquare) || hypCheck(s, offSquare))
@@ -450,4 +463,41 @@ void ChessGame::isInCheck(const Board& board, bool& whiteInCheck, bool& blackInC
 			}
 		}
 	}
+}
+
+void ChessGame::recordMove(const Square& a, const Square& b, const TYPE& pieceA, bool takes, bool check, bool checkmate)
+{
+	string move = "";
+	cout << "piece: " << pieceA << endl;
+	switch (pieceA)
+	{
+	case KING:
+		move += "K";
+		break;
+	case KNIGHT:
+		move += "N";
+		break;
+	case BISHOP:
+		move += "B";
+		break;
+	case QUEEN:
+		move += "Q";
+		break;
+	case PAWN:
+		break;
+	case ROOK:
+		move += "R";
+		break;
+	}
+
+	move += a.asNotation();
+	if (takes) move += "x";
+	move += b.asNotation();
+	if (check)
+		move += "+";
+	if (checkmate)
+		move += "++";
+	
+	m_moves.push_back(move);
+	cout << move << endl;
 }
