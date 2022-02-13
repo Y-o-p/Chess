@@ -54,16 +54,19 @@ int sign(const T& x)
 
 enum STATE
 {
+	NONE,
 	SELECT,
 	MOVE
 };
 
-enum class INPUT_RETURN
+enum INPUT_RETURN
 {
 	OKAY,
 	IN_CHECK,
-	CHECKMATE,
-	INVALID_MOVE
+	INVALID_MOVE,
+	WHITE_CHECKMATE,
+	BLACK_CHECKMATE,
+	STALEMATE
 };
 
 typedef array<array<Piece, 8>, 8> Board;
@@ -77,7 +80,7 @@ public:
 	INPUT_RETURN processInput(const Square& s);
 	const Board& getBoard();
 	void getPieceSelected(Piece& piece, Square& s);
-	const vector<Square>& getValidMoveSquares() const;
+	const vector<Move>& getValidMoveSquares() const;
 	const vector<string>& getMoves() const;
 	bool isWhiteInCheck() const;
 	bool isBlackInCheck() const;
@@ -86,11 +89,12 @@ public:
 private:
 	void setUpBoard(string code);
 	void movePiece(Board& board, const Square& a, const Move& move);
-	void calculateValidMoveSquares(const Square& s);
-	bool hypCheck(const Square& a, const Square& b);
+	vector<Move> calculateValidMoveSquares(const Square& s);
+	bool hypCheck(const Square& a, const Move& b);
 	bool isValidMove(const Board& board, const Square& a, const Square& b) const;
 	void isInCheck(const Board& board, bool& whiteInCheck, bool& blackInCheck);
 	void recordMove(const Square& a, const Square& b, const TYPE& pieceA, bool takes = false, bool check = false, bool checkmate = false);
+	INPUT_RETURN isGameOver();
 
 	vector<string> m_moves;
 	Square m_squareSelected = Square();
@@ -98,6 +102,5 @@ private:
 	Board m_board = { {Piece()} };
 	STATE m_state = SELECT;
 	bool m_whitesTurn = true;
-	bool m_whiteCanCastle = true, m_blackCanCastle = true;
 	bool m_inCheck[2] = { false, false };
 };

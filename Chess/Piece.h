@@ -20,7 +20,7 @@ struct Square
 		file = copy.file;
 		rank = copy.rank;
 	}
-	bool operator ==(const Square& s)
+	bool operator ==(const Square& s) const
 	{
 		return (file == s.file && rank == s.rank);
 	}

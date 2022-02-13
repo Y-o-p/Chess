@@ -20,42 +20,54 @@ INPUT_RETURN ChessGame::processInput(const Square& s)
 		if (p.white == m_whitesTurn && p.type != EMPTY)
 		{
 			m_squareSelected = s;
-			calculateValidMoveSquares(m_squareSelected);
+			m_validMoveSquares = calculateValidMoveSquares(m_squareSelected);
 			m_state = MOVE;
 		}
 		break;
 	case MOVE:
-		auto it = find(m_validMoveSquares.begin(), m_validMoveSquares.end(), s);
+		auto it = find_if(
+			m_validMoveSquares.begin(),
+			m_validMoveSquares.end(),
+			[&](Move const& m) { return m.s == s; }
+		);
 		if (it != m_validMoveSquares.end())
 		{
 			bool inCheckBefore = m_inCheck[!selected.white];
 			bool takes = (m_board[s.rank][s.file].type != EMPTY);
 			// Move the piece
-			movePiece(m_board, m_squareSelected, s);
-			isInCheck(m_board, m_inCheck[1], m_inCheck[0]);
+			movePiece(m_board, m_squareSelected, *it);
+			m_whitesTurn = !m_whitesTurn;
+			auto outcome = isGameOver();
 
 			// Record the move
-			bool check = !inCheckBefore && m_inCheck[!selected.white];
-			recordMove(m_squareSelected, s, selected.type, takes, check, false);
-			
+			bool check = false, checkmate = false;
+			if (outcome == BLACK_CHECKMATE || outcome == WHITE_CHECKMATE)
+			{
+				checkmate = true;
+			}
+			else
+			{
+				check = !inCheckBefore && m_inCheck[!selected.white];
+			}
+			recordMove(m_squareSelected, s, selected.type, takes, check, checkmate);
+
 			// Change states	
 			m_validMoveSquares.clear();
-			m_whitesTurn = !m_whitesTurn;
 			m_state = SELECT;
-			break;
+			cout << "White in check: " << m_inCheck[1] << ", Black in check: " << m_inCheck[0] << endl;
+			return outcome;
 		}
 		
 		if (p.white == m_whitesTurn && p.type != EMPTY)
 		{
 			m_squareSelected = s;
-			calculateValidMoveSquares(m_squareSelected);
+			m_validMoveSquares = calculateValidMoveSquares(m_squareSelected);
 			m_state = MOVE;
 		}
 		break;
 	}
 	
-	cout << m_whitesTurn << endl;
-	return INPUT_RETURN::OKAY;
+	return OKAY;
 }
 
 const Board& ChessGame::getBoard()
@@ -69,7 +81,7 @@ void ChessGame::getPieceSelected(Piece& piece, Square& s)
 	s = m_squareSelected;
 }
 
-const vector<Square>& ChessGame::getValidMoveSquares() const
+const vector<Move>& ChessGame::getValidMoveSquares() const
 {
 	return m_validMoveSquares;
 }
@@ -132,41 +144,35 @@ void ChessGame::movePiece(Board& board, const Square& a, const Move& move)
 {
 	Piece& pieceA = board[a.rank][a.file];
 	Piece& pieceB = board[move.s.rank][move.s.file];
-	Piece ACopy = pieceA;
-	Piece BCopy = pieceB;
 	pieceB = pieceA;
 	pieceB.moved = true;
 	pieceA = Piece();
 
-	// Is it a castle?
-	if (pieceB.type == KING && abs(b.file - a.file) == 2)
+	switch (move.move)
+	{
+	case NORMAL:
+		break;
+	case QUEEN_CASTLE:
 	{
 		int rank = pieceB.white ? 7 : 0;
-		// Queen side or king side castle?
-		if (b.file == 6)
-		{
-			movePiece(board, { 7, rank }, { 5, rank });
-		}
-		else if (b.file == 2)
-		{
-			movePiece(board, { 0, rank }, { 3, rank });
-		}
+		movePiece(board, { 7, rank }, { { 5, rank }, NORMAL });
+		break;
 	}
-
-	// Is it en passant?
-	if (pieceB.type == PAWN &&
-		abs(b.file - a.file) == 1 &&
-		abs(b.rank - a.rank) == 1 &&
-		BCopy.type == EMPTY)
+	case KING_CASTLE:
 	{
+		int rank = pieceB.white ? 7 : 0;
+		movePiece(board, { 0, rank }, { { 3, rank }, NORMAL });
+		break;
+	}
+	case EN_PASSANT:
 		int verticalDir = pieceB.white ? -1 : 1;
-		board[b.rank - verticalDir][b.file] = Piece();
+		board[move.s.rank - verticalDir][move.s.file] = Piece();
 	}
 }
 
-void ChessGame::calculateValidMoveSquares(const Square& s)
+vector<Move> ChessGame::calculateValidMoveSquares(const Square& s)
 {
-	m_validMoveSquares.clear();
+	vector<Move> validMoveSquares;
 	auto& board = m_board;
 	const Piece& p = board[s.rank][s.file];
 
@@ -183,26 +189,26 @@ void ChessGame::calculateValidMoveSquares(const Square& s)
 	};
 	// Checks for collision and adds it to list and returns false if can't continue because either
 	// out of bounds or ran into a piece
-	auto checkAndAddValidSquare = [=](const Square& sToCheck) -> bool
+	auto checkAndAddValidSquare = [&](const Move& move) -> bool
 	{
-		if (!isSquareOnBoard(sToCheck))
+		if (!isSquareOnBoard(move.s))
 			return false;
-		auto collision = checkCollision(sToCheck);
+		auto collision = checkCollision(move.s);
 		if (collision.has_value())
 		{
 			if (collision->white != p.white)
 			{
 				// Enemy piece >:(
 				// Add capturable piece
-				if (!hypCheck(s, sToCheck))
-					m_validMoveSquares.push_back(sToCheck);
+				if (!hypCheck(s, move))
+					validMoveSquares.push_back(move);
 			}
 			// Can no longer check along this line
 			return false;
 		}
 		// Add unoccupied square
-		if (!hypCheck(s, sToCheck))
-			m_validMoveSquares.push_back(sToCheck);
+		if (!hypCheck(s, move))
+			validMoveSquares.push_back(move);
 		return true;
 	};
 	auto calculateLine = [=](bool horizontal, bool diagonal)
@@ -228,7 +234,7 @@ void ChessGame::calculateValidMoveSquares(const Square& s)
 					scan.rank += secondDir;
 
 					// Keep scanning this line until we go out of bounds or run into another piece
-					scanning = checkAndAddValidSquare(scan);
+					scanning = checkAndAddValidSquare({scan, NORMAL});
 				}
 			}
 		}
@@ -245,7 +251,7 @@ void ChessGame::calculateValidMoveSquares(const Square& s)
 				{
 					// All possible combinations of direction to get surrounding squares
 					Square scan = { s.file + x, s.rank + y };
-					checkAndAddValidSquare(scan);
+					checkAndAddValidSquare({scan, NORMAL});
 				}
 			}
 
@@ -266,6 +272,7 @@ void ChessGame::calculateValidMoveSquares(const Square& s)
 
 			for (auto offset : castleOffsets)
 			{
+				MOVE_TYPE moveType = offset == -2 ? QUEEN_CASTLE : KING_CASTLE;
 				Square midSquare = s + Square(sign(offset), 0);
 				Square offSquare = s + Square(offset, 0);
 				// Check for collisions
@@ -276,10 +283,10 @@ void ChessGame::calculateValidMoveSquares(const Square& s)
 				if (m_inCheck[p.white])
 					continue;
 				// Check if castling through check
-				if (hypCheck(s, midSquare) || hypCheck(s, offSquare))
+				if (hypCheck(s, { midSquare, NORMAL }) || hypCheck(s, { offSquare, NORMAL }))
 					continue;
 				// Is able to castle
-				m_validMoveSquares.push_back(offSquare);
+				validMoveSquares.push_back({ offSquare, moveType });
 			}
 		}
 		break;
@@ -292,9 +299,9 @@ void ChessGame::calculateValidMoveSquares(const Square& s)
 				for (int x : dirsB)
 				{
 					Square scan = { s.file + x, s.rank + y };
-					checkAndAddValidSquare(scan);
+					checkAndAddValidSquare({ scan, NORMAL });
 					scan = { s.file + y, s.rank + x };
-					checkAndAddValidSquare(scan);
+					checkAndAddValidSquare({ scan, NORMAL });
 				}
 			}
 		}
@@ -309,14 +316,14 @@ void ChessGame::calculateValidMoveSquares(const Square& s)
 		{
 			int verticalDir = p.white ? -1 : 1;
 			Square scan = { s.file, s.rank + 1 * verticalDir };
-			if (!checkCollision(scan).has_value())
-				m_validMoveSquares.push_back(scan);
+			if (!checkCollision(scan).has_value() && !hypCheck(s, {scan, NORMAL}))
+				validMoveSquares.push_back({ scan, NORMAL });
 			if (!p.moved)
 			{
 				// Can move two spaces
 				scan = { s.file, s.rank + 2 * verticalDir };
-				if (!checkCollision(scan).has_value())
-					m_validMoveSquares.push_back(scan);
+				if (!checkCollision(scan).has_value() && !hypCheck(s, { scan, NORMAL }))
+					validMoveSquares.push_back({ scan, NORMAL });
 			}
 			// Attack
 			for (auto i : { -1, 1 })
@@ -325,8 +332,8 @@ void ChessGame::calculateValidMoveSquares(const Square& s)
 				if (!isSquareOnBoard(scan))
 					continue;
 				auto collision = checkCollision(scan);
-				if (collision.has_value() && collision->white != p.white)
-					m_validMoveSquares.push_back(scan);
+				if (collision.has_value() && collision->white != p.white && !hypCheck(s, { scan, NORMAL }))
+					validMoveSquares.push_back({ scan, NORMAL });
 				
 				// En passant
 				Square start = { s.file + i, s.rank + 2 * verticalDir };
@@ -340,7 +347,7 @@ void ChessGame::calculateValidMoveSquares(const Square& s)
 				{
 					if ((p.white != scanPiece.white) && scanPiece.type == PAWN)
 					{
-						m_validMoveSquares.push_back(scan);
+						validMoveSquares.push_back({ scan, EN_PASSANT });
 					}
 				}
 			}
@@ -351,16 +358,18 @@ void ChessGame::calculateValidMoveSquares(const Square& s)
 		calculateLine(true, false);
 		break;
 	}
+
+	return validMoveSquares;
 }
 
 // Simulate if there is check based on the move (doesn't actually perform the move)
-bool ChessGame::hypCheck(const Square& a, const Square& b)
+bool ChessGame::hypCheck(const Square& a, const Move& move)
 {
 	Board boardCopy = m_board;
-	movePiece(boardCopy, a, b);
+	movePiece(boardCopy, a, move);
 	bool whiteInCheck, blackInCheck;
 	isInCheck(boardCopy, whiteInCheck, blackInCheck);
-	if (boardCopy[b.rank][b.file].white)
+	if (boardCopy[move.s.rank][move.s.file].white)
 		return whiteInCheck;
 	else
 		return blackInCheck;
@@ -417,18 +426,14 @@ bool ChessGame::isValidMove(const Board& board, const Square& a, const Square& b
 		}
 		break;
 	case QUEEN:
+		if ((absHDist > 0 && absVDist == 0) || (absVDist > 0 && absHDist == 0))
+			return rookLine();
 		if (absVDist == 0)
 			return false;
 		if (absHDist / absVDist == 1 && absHDist % absVDist == 0)
 			return bishopLine();
-		if ((absHDist > 0 && absVDist == 0) || (absVDist > 0 && absHDist == 0))
-			return rookLine();
 		break;
 	case BISHOP:
-		if (b.file == 5 && b.rank == 2)
-		{
-			int i = 5+5;
-		}
 		if (absVDist == 0)
 			return false;
 		if (absHDist / absVDist == 1 && absHDist % absVDist == 0)
@@ -508,10 +513,42 @@ void ChessGame::isInCheck(const Board& board, bool& whiteInCheck, bool& blackInC
 	}
 }
 
+INPUT_RETURN ChessGame::isGameOver()
+{
+	isInCheck(m_board, m_inCheck[1], m_inCheck[0]);
+	
+	for (int y = 0; y < 8; y++)
+	{
+		for (int x = 0; x < 8; x++)
+		{
+			const Piece& p = m_board[y][x];
+			if (p.type != EMPTY && p.white == m_whitesTurn)
+			{
+				vector<Move> moves = calculateValidMoveSquares({ x, y });
+				if (!moves.empty())
+				{
+					return OKAY;
+				}
+			}
+		}
+	}
+
+	// Player has no moves
+	if (m_inCheck[m_whitesTurn])
+	{
+		if (m_whitesTurn)
+			return BLACK_CHECKMATE;
+		else
+			return WHITE_CHECKMATE;
+	}
+
+	// Player has no moves but isn't in check
+	return STALEMATE;
+}
+
 void ChessGame::recordMove(const Square& a, const Square& b, const TYPE& pieceA, bool takes, bool check, bool checkmate)
 {
 	string move = "";
-	cout << "piece: " << pieceA << endl;
 	switch (pieceA)
 	{
 	case KING:
@@ -542,5 +579,4 @@ void ChessGame::recordMove(const Square& a, const Square& b, const TYPE& pieceA,
 		move += "++";
 	
 	m_moves.push_back(move);
-	cout << move << endl;
 }

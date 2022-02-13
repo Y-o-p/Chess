@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
 	SDL_Texture* titleTexture = SDL_CreateTextureFromSurface(renderer, title);
 
 	// Game related variables
-	vector<Square> possibleMoves;
+	vector<Move> possibleMoves;
 	ChessGame game;
 	auto board = game.getBoard();
 
@@ -83,10 +83,25 @@ int main(int argc, char* argv[])
 			SDL_GetMouseState(&x, &y);
 			x -= PADDING;
 			y -= PADDING;
-			cout << (x /= chessPieceSize) << ", " << (y /= chessPieceSize) << endl;
+			x /= chessPieceSize;
+			y /= chessPieceSize;
 			
-			if (x < 8 && x >= 0 && y < 8 && y >=0)
-				game.processInput({ x, y });
+			if (x < 8 && x >= 0 && y < 8 && y >= 0)
+			{
+				auto outcome = game.processInput({ x, y });
+				switch (outcome)
+				{
+				case WHITE_CHECKMATE:
+					cout << "White wins!" << endl;
+					break;
+				case BLACK_CHECKMATE:
+					cout << "Black wins!" << endl;
+					break;
+				case STALEMATE:
+					cout << "Stalemate!" << endl;
+					break;
+				}
+			}
 
 			board = game.getBoard();
 			possibleMoves = game.getValidMoveSquares();
@@ -132,8 +147,8 @@ int main(int argc, char* argv[])
 			{
 				SDL_Rect srcRect = { 0, 0, 128, 128 };
 				SDL_Rect destRect = { 
-					possibleMove.file * chessPieceSize + chessPieceSize / 4 + PADDING,
-					possibleMove.rank * chessPieceSize + chessPieceSize / 4 + PADDING,
+					possibleMove.s.file * chessPieceSize + chessPieceSize / 4 + PADDING,
+					possibleMove.s.rank * chessPieceSize + chessPieceSize / 4 + PADDING,
 					chessPieceSize / 2,
 					chessPieceSize / 2};
 				SDL_RenderCopy(renderer, moveable, &srcRect, &destRect);
