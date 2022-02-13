@@ -85,7 +85,7 @@ public:
 
 private:
 	void setUpBoard(string code);
-	void movePiece(Board& board, const Square& a, const Square& b);
+	void movePiece(Board& board, const Square& a, const Move& move);
 	void calculateValidMoveSquares(const Square& s);
 	bool hypCheck(const Square& a, const Square& b);
 	bool isValidMove(const Board& board, const Square& a, const Square& b) const;
@@ -94,7 +94,7 @@ private:
 
 	vector<string> m_moves;
 	Square m_squareSelected = Square();
-	vector<Square> m_validMoveSquares;
+	vector<Move> m_validMoveSquares;
 	Board m_board = { {Piece()} };
 	STATE m_state = SELECT;
 	bool m_whitesTurn = true;

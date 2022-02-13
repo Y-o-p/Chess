@@ -68,3 +68,17 @@ struct Piece
 	bool white = true;
 	bool moved = false;
 };
+
+enum MOVE_TYPE
+{
+	NORMAL,
+	KING_CASTLE,
+	QUEEN_CASTLE,
+	EN_PASSANT
+};
+
+struct Move
+{
+	Square s = Square();
+	MOVE_TYPE move = NORMAL;
+};

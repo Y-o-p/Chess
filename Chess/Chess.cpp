@@ -128,10 +128,10 @@ void ChessGame::setUpBoard(string setUpCode)
 	} 
 }
 
-void ChessGame::movePiece(Board& board, const Square& a, const Square& b)
+void ChessGame::movePiece(Board& board, const Square& a, const Move& move)
 {
 	Piece& pieceA = board[a.rank][a.file];
-	Piece& pieceB = board[b.rank][b.file];
+	Piece& pieceB = board[move.s.rank][move.s.file];
 	Piece ACopy = pieceA;
 	Piece BCopy = pieceB;
 	pieceB = pieceA;
