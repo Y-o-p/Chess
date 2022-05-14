@@ -35,12 +35,15 @@ int main(int argc, char* argv[])
 	}
 
 	// Fonts and textures
+	TTF_Font* titleFont = TTF_OpenFont("times new roman.ttf", 64);
 	TTF_Font* font = TTF_OpenFont("times new roman.ttf", 24);
-	auto title = TTF_RenderText_Solid(font, "Chess", { 255, 255, 255, 255 });
 	SDL_Texture* chessSpriteSheet = IMG_LoadTexture(renderer, "pieces_1.png");
 	SDL_Texture* moveable = IMG_LoadTexture(renderer, "moveable.png");
+	auto title = TTF_RenderText_Solid(titleFont, "chess", { 0, 0, 0, 255 });
+	auto author = TTF_RenderText_Solid(font, "By: Jesse Rheal, GitHub: Y-o-p", { 0, 0, 0, 255 });
 	SDL_Texture* titleTexture = SDL_CreateTextureFromSurface(renderer, title);
-
+	SDL_Texture* authorTexture = SDL_CreateTextureFromSurface(renderer, author);
+	
 	// Game related variables
 	vector<Move> possibleMoves;
 	ChessGame game;
@@ -163,9 +166,11 @@ int main(int argc, char* argv[])
 			};
 			SDL_RenderFillRect(renderer, &sidebar);
 
-			SDL_Rect srcRect = { 0, 0, 128, 128};
-			SDL_Rect destRect = { chessPieceSize * 8, 0, 128, 64 };
+			SDL_Rect destRect = { chessPieceSize * 8 + PADDING, PADDING, title->w, title->h };
 			SDL_RenderCopy(renderer, titleTexture, NULL, &destRect);
+			destRect.w = panelWidth;
+			destRect.y += 70;
+			SDL_RenderCopy(renderer, authorTexture, NULL, &destRect);
 
 			SDL_RenderPresent(renderer);
 			update = false;
